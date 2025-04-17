@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MS Paint Style Whiteboard</title>
+  <style>
+    body {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+      background: #f5f5f5;
+    }
+    .toolbar {
+      margin: 10px;
+      gap: 10px;
+      display: flex;
+      background:white;
+    
+    }
+    .toolbar > * {
+      padding: 6px;
+    }
+    canvas {
+      display: block;
+      margin: auto;
+      border: 2px solid #333;
+      background: white;
+      cursor: crosshair;
+    }
+    .button {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 4px;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+    }
+
+    .button:hover {
+      background-color: #0056b3;
+    }
+    #tool{
+      color:  #0056b3;;
+    }
+  </style>
+</head>
+<body>
+  
+  <h2>Web-Based Whiteboard</h2>
+
+<div class="toolbar">
+  <select id="tool">
+    <option value="brush">Pencil</option>
+    <option value="marker">Marker</option>
+    <option value="spray">Spray</option>
+    <option value="calligraphy">Calligraphy</option>
+    <option value="dots">Dotted Line</option>
+    <option value="text">Text</option>
+    <option value="eraser">Eraser</option>
+  </select>
+
+  <input type="color" id="color" />
+  <input type="range" id="size" min="1" max="30" value="5" />
+  <button class="button" onclick="undo()">Undo</button>
+  <button class="button" onclick="clearCanvas()">Clear</button>
+  <button class="button" onclick="downloadCanvas()">Download</button>
+</div>
+
+<canvas id="canvas" width="1000" height="500"></canvas>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let tool = 'brush';
+let brushColor = '#000';
+let brushSize = 5;
+let drawing = false;
+let history = [];
+
+const saveHistory = () => {
+  history.push(canvas.toDataURL());
+  if (history.length > 50) history.shift();
+};
+
+document.getElementById("tool").onchange = e => tool = e.target.value;
+document.getElementById("color").onchange = e => brushColor = e.target.value;
+document.getElementById("size").oninput = e => brushSize = e.target.value;
+
+canvas.onmousedown = e => {
+  const x = e.offsetX;
+  const y = e.offsetY;
+
+  if (tool === "text") {
+    const text = prompt("Enter text:");
+    if (text) {
+      ctx.fillStyle = brushColor;
+      ctx.font = `${brushSize * 3}px Arial`;
+      ctx.fillText(text, x, y);
+      saveHistory();
+    }
+    return;
+  }
+
+  drawing = true;
+  saveHistory();
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+};
+
+canvas.onmousemove = e => {
+  if (!drawing) return;
+  const x = e.offsetX;
+  const y = e.offsetY;
+
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = tool === "eraser" ? "#fff" : brushColor;
+  ctx.lineWidth = brushSize;
+
+  switch (tool) {
+    case "brush":
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      break;
+    case "marker":
+      ctx.globalAlpha = 0.2;
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      ctx.globalAlpha = 1.0;
+      break;
+    case "calligraphy":
+      ctx.lineWidth = brushSize * 2;
+      ctx.lineTo(x + 1, y + 3);
+      ctx.stroke();
+      break;
+    case "dots":
+      ctx.beginPath();
+      ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+      ctx.fillStyle = brushColor;
+      ctx.fill();
+      break;
+    case "spray":
+      for (let i = 0; i < 10; i++) {
+        const offsetX = Math.random() * brushSize * 2 - brushSize;
+        const offsetY = Math.random() * brushSize * 2 - brushSize;
+        ctx.fillRect(x + offsetX, y + offsetY, 1, 1);
+      }
+      break;
+    case "eraser":
+      ctx.lineTo(x, y);
+      ctx.stroke();
+      break;
+  }
+};
+
+canvas.onmouseup = () => {
+  drawing = false;
+  ctx.beginPath();
+};
+
+function undo() {
+  if (history.length === 0) return;
+  const last = history.pop();
+  const img = new Image();
+  img.src = last;
+  img.onload = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+  };
+}
+
+function clearCanvas() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  history = [];
+}
+
+function downloadCanvas() {
+  const link = document.createElement("a");
+  link.download = "drawing.png";
+  link.href = canvas.toDataURL();
+  link.click();
+}
+</script>
+
+</body>
+</html>
